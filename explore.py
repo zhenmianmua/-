@@ -12,6 +12,8 @@ github主页(欢迎关注): https://github.com/zhenmianmua
 """
 import random
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+import numpy as np
 # 问题描述与算法原理：
 '''
 我拥有至多19个伙伴，每个伙伴都有不同的战力，需要安排这些伙伴探索不同的关卡；
@@ -32,7 +34,7 @@ from tqdm import tqdm
 explore_strategy = 0
 
 # 参数2：目前能够探索的最高关卡（不能超过22）
-explore_now = 22
+explore_now = 17
 
 # 参数3：自身伙伴战力，格式为[攻击,防御]，注意里面那个逗号是英文的
 f_power = [[8703, 6746], [6536, 2514], [5160, 3680], [2253, 3258], [3126, 2226],
@@ -43,9 +45,10 @@ num_partners = len(f_power)
 
 # 遗传算法参数，想调整性能可以改
 pop_size = 200     # 遗传算法种群规模（每次迭代保留200个解）
-gens = 10000         # 迭代次数（进化500代）
+gens = 15000         # 迭代次数
 mut_rate = 0.1     # 变异概率（10%）
-
+total_gain = []   # 画图用
+total_strategy = []
 # 一些游戏数据，如有版本变更可以修改
 # 每关的满收益战力需求
 explore_need = [350, 900, 1200, 2200, 2800,
@@ -126,11 +129,11 @@ def init_population():
 
 
 # 选择
-def select(pop, fitness):
+def select(pop, fit_ness):
     # pop是所有分配方式的集合（200个个体构成的种群）
     # fitness是一个数组，装着种群中所有个体的收益
-    total = sum(fitness)  # 总适应度
-    probs = [f / total for f in fitness]  # 每个个体被选中的概率，与对应收益成正比
+    total = sum(fit_ness)  # 总适应度
+    probs = [f / total for f in fit_ness]  # 每个个体被选中的概率，与对应收益成正比
     # 某种分配方式的收益越高，说明里面的具体策略越优秀，算法就会更倾向于在它的基础上改进
     # 有些分配方式可能总收益偏低，但里面某一基因也可能刚好是最优的（被其它拖了后腿），因此不能完全放弃
     # 按概率选择2个个体作为父母
@@ -162,16 +165,27 @@ def mutate(ind):
 population = init_population()
 # 迭代进化GENS代
 for gen in tqdm(range(gens), desc="迭代进度"):
+    fitness = []
     # 计算当前种群中每个个体的适应度（总资源收益）
-    fitness = [evaluate(ind) for ind in population]
+    best_temp = 0
+    i_temp = []
+    for k in population:
+        gold_temp = evaluate(k)
+        fitness.append(gold_temp)
+        if gold_temp > best_temp:
+            best_temp = gold_temp
+            i_temp = k
+    total_gain.append(best_temp)
+    total_strategy.append(i_temp)
     # 生成下一代种群
     new_pop = []
     for _ in range(pop_size):
         # 选择两个父母
-        p1, p2 = select(population, fitness)
+        p10, p20 = select(population, fitness)
         # 交叉产生子代
-        child = crossover(p1, p2)
+        child = crossover(p10, p20)
         # 子代变异
+        # if gen < 10000:
         child = mutate(child)
         # 加入新种群
         new_pop.append(child)
@@ -179,11 +193,24 @@ for gen in tqdm(range(gens), desc="迭代进度"):
     population = new_pop
 
 # 找到最优解（适应度最高的个体）
-best = max(population, key=evaluate)
+best = np.max(total_gain)
+# print(best)
+best_place = np.where(total_gain == best)[0].item()
+# print(best_place)
+# print(type(best_place))
+best_strategy = total_strategy[best_place]
+# print(best_strategy)
 if explore_strategy == 0:
-    print("最优金币收益为:", evaluate(best))
+    print("最优金币收益为:", best)
 elif explore_strategy == 1:
-    print("最优木头收益为:", evaluate(best))
+    print("最优木头收益为:", best)
 else:
-    print("最优铁矿收益为:", evaluate(best))
-print("分配方案:", best)          # 最优分配方案（每个伙伴的分配）
+    print("最优铁矿收益为:", best)
+print("分配方案:", best_strategy)          # 最优分配方案（每个伙伴的分配）
+print("出现在第"+str(best_place+1)+"次迭代")
+plt.figure()
+plt.plot(total_gain)
+plt.xlabel('Episode index')
+plt.ylabel('Mean reward')
+plt.title('Mean reward vs episode')
+plt.show()
