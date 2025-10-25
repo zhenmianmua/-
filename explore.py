@@ -45,7 +45,7 @@ num_partners = len(f_power)
 
 # 遗传算法参数，想调整性能可以改
 pop_size = 200     # 遗传算法种群规模（每次迭代保留200个解）
-gens = 15000         # 迭代次数
+gens = 5000         # 迭代次数
 mut_rate = 0.1     # 变异概率（10%）
 total_gain = []   # 画图用
 total_strategy = []
@@ -187,15 +187,24 @@ for gen in tqdm(range(gens), desc="迭代进度"):
         # 子代变异
         # if gen < 10000:
         child = mutate(child)
+        # 死亡
+        p_die = np.min(fitness)
+        fitness.remove(p_die)
+        for x in population:
+            if evaluate(x) == p_die:
+                population.remove(x)
+                break
         # 加入新种群
-        new_pop.append(child)
+        population.append(child)
+        fitness.append(evaluate(child))
     # 用新种群替换旧种群，进入下一代
-    population = new_pop
+    # population = new_pop
 
 # 找到最优解（适应度最高的个体）
+# print(total_gain)
 best = np.max(total_gain)
 # print(best)
-best_place = np.where(total_gain == best)[0].item()
+best_place = total_gain.index(best)
 # print(best_place)
 # print(type(best_place))
 best_strategy = total_strategy[best_place]
